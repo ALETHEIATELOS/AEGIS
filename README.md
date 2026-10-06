@@ -1,15 +1,45 @@
-AEGIS
+# AEGIS — Institutional Intelligence Infrastructure
 
-Institutional Intelligence Infrastructure
+AEGIS is a research and engineering stack for building evidence-bound,
+multi-perspective AI decision systems.
 
-AEGIS is a research and engineering stack for building evidence-bound, multi-perspective AI decision systems.
+AEGIS separates AI execution from institutional intelligence. It is designed to
+preserve evidence, independent reasoning, disagreement, uncertainty, decision
+state, human authority, outcomes, and epistemic memory across consequential
+decision processes.
 
-AEGIS separates AI execution from institutional intelligence.
+## The one principle everything else hangs on
 
-It is designed to preserve evidence, independent reasoning, disagreement, uncertainty, decision state, human authority, outcomes, and epistemic memory across consequential decision processes.
+> **AI-generated analysis, recommendation, authorization, and execution are
+> distinct states.**
+>
+> `READY FOR HUMAN AUTHORITY ≠ AUTHORIZED ≠ EXECUTED`
+>
+> Technical connectivity does not establish authority. No model, agent, tool,
+> or runtime may grant itself authority.
 
-Architecture
+## Quickstart
 
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest                                    # deterministic core, no API keys needed
+python examples/demo.py                   # full decision lifecycle, end to end
+```
+
+The agent runtime (`aegis/runtime.py`) uses
+[Pydantic AI](https://ai.pydantic.dev/). It defaults to Pydantic AI's test
+model, so the demo and the test suite run fully offline. Point it at a real
+model to run live perspectives:
+
+```python
+from aegis.runtime import AegisOrchestrator
+orchestrator = AegisOrchestrator(model_name="openai:gpt-4o")  # or any pydantic-ai model
+```
+
+## Architecture
+
+```
                     AEGIS
        Institutional Intelligence Layer
                          │
@@ -36,23 +66,32 @@ Architecture
                     Observation
                          │
                  Epistemic Memory
-                         │
                          ▼
                   Agent Runtime
                          │
                    Pydantic AI
+```
 
-Foundational Principle
+Each layer is a typed, importable module in `aegis/`:
 
-AI-generated analysis, recommendation, authorization, and execution are distinct states.
+| Module | Responsibility |
+|---|---|
+| `evidence.py` | Immutable evidence items with a provenance chain — who touched what, when, and why |
+| `perspectives.py` | Independent reasoning paths, each bound to the evidence it actually used |
+| `conflict.py` | Unresolved disagreement preserved as a first-class record; deterministic risk factors and scenarios |
+| `synthesis.py` | Recommendation that **preserves dissent** and propagates uncertainty — never forces consensus |
+| `readiness.py` | Deterministic, LLM-free readiness check: `READY_FOR_HUMAN_AUTHORITY` or `NOT_READY` with reasons |
+| `authority.py` | The decision gate: explicit state machine; **only a human actor can authorize**; only `AUTHORIZED` can execute |
+| `records.py` | Append-only, immutable decision records with evidence fingerprints for reconstruction |
+| `outcomes.py` | Observed outcomes and divergence notes, kept separate from the records they describe |
+| `memory.py` | Epistemic memory: lessons reference records but never mutate them |
+| `domain.py` | Domain-agnostic `Case` envelope — the same architecture across decision domains |
+| `runtime.py` | Pydantic AI agents (perspective, contrarian, synthesis) and the orchestrator |
 
-READY FOR HUMAN AUTHORITY ≠ AUTHORIZED ≠ EXECUTED
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full doctrine,
+including the decision state machine and the authority boundary.
 
-Technical connectivity does not establish authority.
-
-No model, agent, tool, or runtime may grant itself authority.
-
-Origins
+## Origins
 
 AEGIS builds upon the institutional intelligence architecture developed through AletheiaTelos.
 
@@ -74,41 +113,52 @@ AletheiaTelos established the initial architecture around:
 
 AEGIS is the new implementation layer for researching and extending these ideas using modern typed AI infrastructure.
 
-Runtime Foundation
+## Runtime foundation
 
-AEGIS is designed to use Pydantic AI as an underlying agent and execution foundation.
+Pydantic AI provides the agent runtime. AEGIS provides the institutional
+intelligence architecture governing how those agents participate in
+consequential decisions.
 
-Pydantic AI provides the agent runtime.
+## The 8 research questions, mapped to code
 
-AEGIS provides the institutional intelligence architecture governing how those agents participate in consequential decisions.
+1. **Evidence provenance through probabilistic reasoning** → `evidence.py`:
+   every item carries an immutable chain-of-custody; `derive()` returns a new
+   item, never a mutation.
+2. **Genuinely independent reasoning paths** → `perspectives.py` +
+   `runtime.py`: each perspective agent runs with its own evidence selection
+   and no shared hidden state.
+3. **Unresolved disagreement without forced consensus** →
+   `conflict.py`: contradictions are recorded `UNRESOLVED` and carried into
+   the synthesis as preserved dissent.
+4. **Uncertainty propagation** → `synthesis.py` + `conflict.py`: perspective
+   confidences combine deterministically; risk scenarios carry probabilities
+   adjusted by evidence reliability.
+5. **Reconstructing why a decision changed** → `records.py` + `memory.py`:
+   records store evidence fingerprints; `reconstruct()` replays the
+   chronological record so a changed decision is explainable by diffing.
+6. **Recommendation ≠ authorization ≠ execution** → `authority.py`: a
+   deterministic state machine enforces the distinction; an agent attempting
+   to authorize raises `AuthorityViolation`.
+7. **Learning from outcomes without corrupting history** → `outcomes.py` +
+   `memory.py`: outcomes and lessons are append-only and reference records;
+   records are frozen.
+8. **Generalizing across domains** → `domain.py`: the `Case` envelope is
+   domain-agnostic; see the tests for the same pipeline run in two domains.
 
-Initial Research Questions
+## Repository boundary
 
-AEGIS will investigate whether AI systems can:
-
-1. Preserve evidence provenance throughout probabilistic reasoning.
-2. Maintain genuinely independent reasoning paths.
-3. Represent unresolved disagreement without forcing premature consensus.
-4. Propagate uncertainty through analysis and simulation.
-5. Reconstruct why a decision changed when evidence or models change.
-6. Maintain a deterministic distinction between recommendation, authorization, and execution.
-7. Learn from outcomes without corrupting the historical decision record.
-8. Generalize the architecture across consequential decision domains.
-
-Repository Boundary
-
-AEGIS is a new implementation and research stack.
-
-Reference architectures may inform its development, but source repositories remain separate.
-
-AEGIS does not modify or replace:
+AEGIS is a new implementation and research stack. Reference architectures may
+inform its development, but source repositories remain separate. AEGIS does
+not modify or replace:
 
 * AletheiaTelos source repositories
 * the clean Pydantic AI foundation
 * TYR application repositories
 
-Status
+## Status
 
-Early-stage research and development.
-
-The objective is to establish a rigorous technical foundation before building domain-specific applications.
+Early-stage research and development (v0.1.0): the foundational
+institutional-intelligence layer — typed domain core, deterministic
+readiness and authority gates, Pydantic AI runtime wiring, and a passing
+test suite. Domain-specific applications come after the foundation is
+rigorous.
