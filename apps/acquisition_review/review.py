@@ -38,10 +38,10 @@ class ReviewResult:
     memory: EpistemicMemory = field(default_factory=EpistemicMemory)
 
 
-def load_evidence_file(path: str | Path) -> tuple[list[Evidence], list[RiskFactor], list[RiskScenario], str]:
-    """Load a review intake file.
+def load_evidence_data(data: dict, *, provenance_detail: str = "intake") -> tuple[list[Evidence], list[RiskFactor], list[RiskScenario], str]:
+    """Load review intake from a dict (file or API body — same shape).
 
-    JSON shape:
+    Shape:
     {
       "target": "Harborline Logistics",
       "terms": "…",                       # optional, folded into the question
@@ -57,7 +57,8 @@ def load_evidence_file(path: str | Path) -> tuple[list[Evidence], list[RiskFacto
       ]
     }
     """
-    data = json.loads(Path(path).read_text())
+    if not isinstance(data, dict):
+        raise ValueError("Intake must be a JSON object.")
     target = data.get("target", "the target")
     terms = data.get("terms", "")
     question = QUESTION_TEMPLATE.format(target=target)
@@ -65,13 +66,24 @@ def load_evidence_file(path: str | Path) -> tuple[list[Evidence], list[RiskFacto
         question += f" Proposed terms: {terms}"
 
     evidence = []
-    for item in data.get("evidence", []):
+    for i, item in enumerate(data.get("evidence", [])):
+        if not isinstance(item, dict) or "content" not in item:
+            raise ValueError(f"evidence[{i}] must be an object with a 'content' field.")
+        try:
+            kind = EvidenceKind(item.get("kind", "supplied_fact"))
+        except ValueError:
+            raise ValueError(
+                f"evidence[{i}].kind must be one of: "
+                + ", ".join(k.value for k in EvidenceKind)
+            )
         evidence.append(Evidence(
             content=item["content"],
-            kind=EvidenceKind(item.get("kind", "supplied_fact")),
-            source=item.get("source", "intake file"),
+            kind=kind,
+            source=item.get("source", "intake"),
             reliability=float(item.get("reliability", 0.5)),
-        ).with_provenance("operator", "collected", detail=f"from {path}"))
+        ).with_provenance("operator", "collected", detail=provenance_detail))
+    if not evidence:
+        raise ValueError("Intake must include at least one evidence item.")
 
     risks = [RiskFactor(
         name=r["name"],
@@ -91,17 +103,23 @@ def load_evidence_file(path: str | Path) -> tuple[list[Evidence], list[RiskFacto
     return evidence, risks, scenarios, question
 
 
-def run_acquisition_review(
-    evidence_path: str | Path,
+def load_evidence_file(path: str | Path) -> tuple[list[Evidence], list[RiskFactor], list[RiskScenario], str]:
+    """Load a review intake file (JSON)."""
+    data = json.loads(Path(path).read_text())
+    return load_evidence_data(data, provenance_detail=f"from {path}")
+
+
+def run_review_from_intake(
+    intake: dict,
     *,
     model_name: str | None = None,
     with_rebuttal: bool = True,
     with_reframing: bool = True,
     standpoints: list[str] | None = None,
 ) -> ReviewResult:
-    """Run the full acquisition review. Stops at the gate — the dossier
-    declares READY_FOR_HUMAN_AUTHORITY; authorization happens outside."""
-    evidence, risks, scenarios, question = load_evidence_file(evidence_path)
+    """Run the full acquisition review from an intake dict. Stops at the gate —
+    the dossier declares READY_FOR_HUMAN_AUTHORITY; authorization happens outside."""
+    evidence, risks, scenarios, question = load_evidence_data(intake)
     case = Case(question=question, domain="acquisition_review")
     for item in evidence:
         case.add_evidence(item)
@@ -143,6 +161,22 @@ def run_acquisition_review(
         minority_report=minority_report, sensitivity=sensitivity,
         reframings=reframings, second_generation=gen2,
         dossier_markdown=dossier, log=log, memory=memory,
+    )
+
+
+def run_acquisition_review(
+    evidence_path: str | Path,
+    *,
+    model_name: str | None = None,
+    with_rebuttal: bool = True,
+    with_reframing: bool = True,
+    standpoints: list[str] | None = None,
+) -> ReviewResult:
+    """Run the full acquisition review from a JSON evidence file."""
+    data = json.loads(Path(evidence_path).read_text())
+    return run_review_from_intake(
+        data, model_name=model_name, with_rebuttal=with_rebuttal,
+        with_reframing=with_reframing, standpoints=standpoints,
     )
 
 

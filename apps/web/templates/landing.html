@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — Institutional Intelligence Infrastructure</title>
+<meta name="description" content="AEGIS is a research and engineering stack for building evidence-bound, multi-perspective AI decision systems.">
+<style>
+  :root { --bg: #0a0a0b; --fg: #f5f5f4; --muted: #a1a1aa; --line: #27272a; --accent: #e4e4e7; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+         margin: 0; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 96px 0 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 15px; letter-spacing: 0.35em; font-weight: 600; margin: 0 0 24px; color: var(--muted); }
+  .hero { font-size: clamp(32px, 6vw, 52px); line-height: 1.15; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 20px; }
+  .sub { color: var(--muted); font-size: 18px; max-width: 60ch; }
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted); margin: 0 0 24px; font-weight: 600; }
+  p { margin: 0 0 16px; color: #d4d4d8; }
+  .principle { border-left: 2px solid var(--accent); padding: 8px 0 8px 24px; margin: 24px 0; }
+  .principle p { color: var(--fg); font-size: 19px; margin: 0 0 8px; }
+  .principle .neq { font-family: ui-monospace, Menlo, monospace; font-size: 15px; color: var(--muted); }
+  pre { background: #111113; border: 1px solid var(--line); border-radius: 8px; padding: 20px;
+        overflow-x: auto; font-size: 13px; line-height: 1.7; color: #d4d4d8; }
+  code { font-family: ui-monospace, Menlo, monospace; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  td { color: #d4d4d8; }
+  a { color: var(--fg); text-decoration: underline; text-decoration-color: #52525b; text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--fg); }
+  .api { background: #111113; border: 1px solid var(--line); border-radius: 8px; padding: 20px; margin: 16px 0; }
+  .api h3 { margin: 0 0 8px; font-size: 15px; }
+  .api h3 code { color: var(--fg); }
+  .api p { font-size: 14px; margin: 0 0 12px; }
+  footer { padding: 48px 0 64px; color: var(--muted); font-size: 14px; }
+  ul { padding-left: 20px; color: #d4d4d8; }
+  li { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>AEGIS</h1>
+  <p class="hero">Institutional Intelligence Infrastructure</p>
+  <p class="sub">A research and engineering stack for building evidence-bound,
+  multi-perspective AI decision systems. AEGIS separates AI execution from
+  institutional intelligence — preserving evidence, independent reasoning,
+  disagreement, uncertainty, decision state, human authority, outcomes, and
+  epistemic memory across consequential decisions.</p>
+</header>
+
+<section>
+  <h2>The principle</h2>
+  <div class="principle">
+    <p>AI-generated analysis, recommendation, authorization, and execution are distinct states.</p>
+    <p class="neq">READY FOR HUMAN AUTHORITY ≠ AUTHORIZED ≠ EXECUTED</p>
+    <p class="neq">No model, agent, tool, or runtime may grant itself authority.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Architecture</h2>
+<pre>                    AEGIS
+       Institutional Intelligence Layer
+                         │
+       ┌─────────────────┼─────────────────┐
+       │                 │                 │
+   Evidence         Perspectives       Governance
+       │                 │                 │
+       └─────────────────┼─────────────────┘
+                         │
+                  Conflict / Risk
+                         │
+                     Synthesis
+                         │
+                Decision Readiness
+                         │
+                  Decision Gate
+                         │
+                  Human Authority
+                         │
+                  Decision Record
+                         │
+                      Outcome
+                         │
+                    Observation
+                         │
+                 Epistemic Memory
+                         ▼
+                  Agent Runtime  (Pydantic AI)</pre>
+</section>
+
+<section>
+  <h2>What it does</h2>
+  <ul>
+    <li><strong>Evidence</strong> — immutable items with a full provenance chain. Nothing is edited, ever; derivations return new items with lineage.</li>
+    <li><strong>Perspectives</strong> — genuinely independent reasoning paths, each bound to the evidence it cited. Independence is enforced by what the system withholds.</li>
+    <li><strong>Conflict</strong> — disagreement recorded as a first-class object, unresolved by default. Dissent is carried into the output, not averaged away.</li>
+    <li><strong>Kaleidoscope</strong> — reframing through foreign standpoints, structured rebuttal rounds with bounded exposure, deterministic sensitivity analysis, and formal minority reports.</li>
+    <li><strong>Readiness</strong> — a deterministic, LLM-free check: <code>READY_FOR_HUMAN_AUTHORITY</code> or <code>NOT_READY</code> with actionable reasons.</li>
+    <li><strong>The gate</strong> — a closed state machine. Only a human actor can authorize; only an authorized decision can execute.</li>
+    <li><strong>Memory</strong> — append-only records, outcomes, and lessons. The institution learns without rewriting its history.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Try it — the review API</h2>
+  <p>This service runs the acquisition-review domain application. POST an
+  evidence intake, get back a full decision dossier — recommendation,
+  preserved dissent, sensitivity analysis, and minority report. It stops at
+  the gate: the response declares the case ready for human authority.
+  Authorization happens outside the system.</p>
+
+  <div class="api">
+    <h3><code>GET /api/sample</code></h3>
+    <p>The sample intake file — the exact shape <code>POST /api/review</code> expects.</p>
+  </div>
+  <div class="api">
+    <h3><code>POST /api/review</code></h3>
+    <p>Body: <code>{"intake": {…}, "model": null, "with_rebuttal": true, "with_reframing": true}</code>.
+    Omit <code>model</code> to use the server's configured model.</p>
+<pre>curl -s -X POST https://YOUR-DOMAIN/api/review \
+  -H 'Content-Type: application/json' \
+  -d @- &lt; intake.json | python3 -m json.tool</pre>
+  </div>
+  <div class="api">
+    <h3><code>GET /health</code></h3>
+    <p>Service status and version.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Research questions</h2>
+  <p>AEGIS investigates whether AI systems can: preserve evidence provenance
+  through probabilistic reasoning · maintain genuinely independent reasoning
+  paths · represent unresolved disagreement without forcing consensus ·
+  propagate uncertainty through analysis and simulation · reconstruct why a
+  decision changed · keep recommendation, authorization, and execution
+  deterministically distinct · learn from outcomes without corrupting the
+  record · and generalize the architecture across decision domains.</p>
+</section>
+
+<footer>
+  <p>AEGIS v{{ version }} — early-stage research. Reference architectures may
+  inform its development; source repositories remain separate.</p>
+  <p><a href="https://github.com/ALETHEIATELOS/AEGIS">github.com/ALETHEIATELOS/AEGIS</a></p>
+</footer>
+
+</div>
+</body>
+</html>

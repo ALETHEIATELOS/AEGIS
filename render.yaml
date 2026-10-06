@@ -1,0 +1,27 @@
+# Render Blueprint for AEGIS.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> select the AEGIS repo.
+# Then attach a custom domain under the service's Settings -> Custom Domains.
+#
+# Environment:
+#   AEGIS_MODEL — Pydantic AI model string for live runs (e.g. "openai:gpt-4o").
+#                 Leave as "test" for the offline demo mode. The provider's
+#                 API key must be set as an env var too (e.g. OPENAI_API_KEY)
+#                 when using a live model. Governance is identical either way:
+#                 live models upgrade the analysis, never the authority boundary.
+
+services:
+  - type: web
+    name: aegis
+    runtime: python
+    buildCommand: "pip install -e \".[web]\""
+    startCommand: "gunicorn 'apps.web.app:create_app()' --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: AEGIS_MODEL
+        value: test
+        # To go live: change to your model, e.g. "openai:gpt-4o",
+        # and add the provider key (OPENAI_API_KEY, ANTHROPIC_API_KEY, …)
+        # as a secret env var on the service.

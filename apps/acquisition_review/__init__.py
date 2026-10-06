@@ -15,6 +15,11 @@ case READY_FOR_HUMAN_AUTHORITY. Authorization is a human act, performed
 outside the app.
 """
 
-from apps.acquisition_review.review import ReviewResult, run_acquisition_review
+from apps.acquisition_review.review import (
+    ReviewResult,
+    load_evidence_data,
+    run_acquisition_review,
+    run_review_from_intake,
+)
 
-__all__ = ["ReviewResult", "run_acquisition_review"]
+__all__ = ["ReviewResult", "load_evidence_data", "run_acquisition_review", "run_review_from_intake"]

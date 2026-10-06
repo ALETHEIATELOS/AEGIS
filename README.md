@@ -28,6 +28,10 @@ python examples/demo.py                   # full decision lifecycle, end to end
 
 # Domain application: acquisition review -> decision dossier
 python -m apps.acquisition_review --evidence apps/acquisition_review/sample_evidence.json
+
+# Web service (landing page + review API), local:
+pip install -e ".[web]"
+gunicorn "apps.web.app:create_app()" --bind 0.0.0.0:8000
 ```
 
 The agent runtime (`aegis/runtime.py`) uses
@@ -92,6 +96,7 @@ Each layer is a typed, importable module in `aegis/`:
 | `domain.py` | Domain-agnostic `Case` envelope — the same architecture across decision domains |
 | `runtime.py` | Pydantic AI agents (perspective, contrarian, synthesis, rebuttal, reframing) and the orchestrator |
 | `apps/acquisition_review/` | **v0.2:** domain application — JSON evidence intake, full pipeline, decision dossier markdown |
+| `apps/web/` | **v0.3:** Flask web service — project landing page + `POST /api/review`; deployable via `render.yaml` |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full doctrine,
 including the decision state machine and the authority boundary.
@@ -162,22 +167,23 @@ not modify or replace:
 
 ## Status
 
-**v0.2.0** — the foundational layer plus the deepened kaleidoscope and the
-first domain application:
+**v0.3.0** — the web service:
 
-- **Kaleidoscope v0.2** (`aegis/kaleidoscope.py`): conclusions reframed
-  through foreign standpoints; structured rebuttal rounds with bounded
-  exposure (topic + positions only, never full reasoning) producing
-  second-generation perspectives; deterministic sensitivity analysis
-  showing which evidence the recommendation hinges on; formal minority
-  reports for the human decider.
-- **Acquisition review** (`apps/acquisition_review/`): JSON evidence
-  intake, domain standpoints, full pipeline, and a decision-dossier
-  markdown renderer. Stops at the gate — `AWAITING HUMAN AUTHORIZATION`.
-- **Live models**: `AEGIS_MODEL` env var (or explicit `model_name`);
-  see [docs/LIVE_RUNS.md](docs/LIVE_RUNS.md). Live runs upgrade the
-  analysis, never the authority boundary.
-- 46 passing tests mapped to the 8 research questions.
+- **`apps/web/`**: Flask service with a project landing page (the public
+  face — suitable for a custom domain), `GET /health`, `GET /api/sample`,
+  and `POST /api/review`, which runs the full acquisition-review pipeline
+  and returns the dossier, sensitivity analysis, and minority report as
+  JSON. Stops at the gate, like everything else here.
+- **`render.yaml`**: Blueprint — Render dashboard → New → Blueprint →
+  select the repo, then attach a custom domain under the service's
+  Settings → Custom Domains. `AEGIS_MODEL` defaults to `test`; set a live
+  model plus provider key to go live.
 
-Domain-specific applications beyond acquisition review come next — the
-foundation is rigorous enough to build on.
+**v0.2.0** — the deepened kaleidoscope and the first domain application
+(reframing, structured rebuttal with bounded exposure, sensitivity
+analysis, minority reports; `apps/acquisition_review`; `AEGIS_MODEL`;
+46 tests).
+
+**v0.1.0** — the foundational institutional-intelligence layer: typed
+domain core, deterministic readiness and authority gates, Pydantic AI
+runtime wiring, end-to-end demo.
