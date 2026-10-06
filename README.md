@@ -162,7 +162,8 @@ inform its development, but source repositories remain separate. AEGIS does
 not modify or replace:
 
 * AletheiaTelos source repositories
-* the clean Pydantic AI foundation
+* the clean Pydantic AI foundation — [`LIQUIDITYLAB/pydantic-ai`](https://github.com/LIQUIDITYLAB/pydantic-ai)
+  (public archive, pinned at `721c78d6`; see [docs/FOUNDATION.md](docs/FOUNDATION.md))
 * TYR application repositories
 
 ## Status
