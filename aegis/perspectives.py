@@ -50,6 +50,16 @@ class Perspective(BaseModel):
                                description="The perspective's own credence in its conclusion.")
     formed_by: str = Field(default="aegis", description="Which agent or process formed this perspective.")
     formed_at: datetime = Field(default_factory=_utcnow)
+    generation: int = Field(
+        default=1,
+        description="Reasoning generation. 1 = initial independent pass; 2+ = produced "
+                    "through a structured rebuttal round (see kaleidoscope.py). "
+                    "Earlier generations are always kept.",
+    )
+    responds_to: tuple[str, ...] = Field(
+        default=(),
+        description="Contradiction ids this perspective responds to (generation 2+).",
+    )
 
     def shares_evidence_with(self, other: "Perspective") -> set[str]:
         """The evidence items both perspectives drew on — overlap is data, not a flaw."""

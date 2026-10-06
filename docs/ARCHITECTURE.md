@@ -125,12 +125,48 @@ structural rather than aspirational.
 fingerprints between consecutive records — the mechanical answer to "why
 did the decision change?"
 
+### Kaleidoscope v0.2 (`kaleidoscope.py`, `runtime.py`) — deeper turns, same constitution
+
+Four mechanisms deepen the kaleidoscope without touching the authority boundary:
+
+- **Reframing.** A conclusion stress-tested through a foreign standpoint.
+  Recorded as an immutable `Reframing` — the original conclusion is kept
+  alongside, so the audit shows what was tested, not just the result.
+- **Structured rebuttal.** The *only* path by which a perspective engages
+  another's reasoning — and the exposure is bounded to topic + positions.
+  `contradiction_exposure()` returns exactly what the rebutting agent saw;
+  the bound is auditable because it is data. Rebuttals yield
+  second-generation perspectives (`generation=2`, `responds_to` set); gen 1
+  is never edited.
+- **Sensitivity analysis.** Pure function: for each evidence item,
+  recompute combined confidence without the perspectives that cited it.
+  `leverage` tells the human what the recommendation hinges on — including
+  negative leverage, where removing weak evidence *strengthens* the case.
+- **Minority report.** Built only from unresolved contradictions, rendered
+  as markdown for the decider. If there is no dissent, the report says so
+  plainly rather than inventing any.
+
+Rebuttal rounds are analytical sub-steps: they happen between
+`CONFLICT_ANALYZED` and `SYNTHESIZED` and are recorded in provenance and
+perspective generations, not as new gate states. The state machine is
+unchanged.
+
 ### Domain (`domain.py`) — the envelope is empty on purpose
 
 `Case` carries no domain logic. If you find yourself adding domain-specific
 fields to `Case`, stop: that knowledge belongs in evidence content and in
 standpoints. The day `Case` needs a domain field is the day the
 generalization claim (research question 8) has failed.
+
+### Domain applications (`apps/`)
+
+Apps are thin: domain standpoints, evidence intake, dossier format. If an
+app needs a new concept that isn't domain knowledge (a new reasoning
+mechanism, a new gate behavior), that concept belongs in `aegis/` — the
+app was the wrong place the moment it needed it. The acquisition review
+app also demonstrates the intended lifecycle beyond the dossier:
+`record_human_decision()` (human act) → `DecisionRecord` → `record_outcome()`
+→ lesson in epistemic memory, history untouched.
 
 ## Guardrails for contributors
 
@@ -144,6 +180,10 @@ generalization claim (research question 8) has failed.
 5. **Keep the reference graph one-way** (memory → records → evidence).
 6. **Uncertainty must propagate visibly.** Any new combination rule keeps
    both inputs and output inspectable, like `adjusted_probability` does.
+7. **Rebuttal exposure stays bounded.** The only thing a rebutting
+   perspective may see of another is what `contradiction_exposure()`
+   returns: topic + positions. Never widen that channel casually — it is
+   the load-bearing wall of perspective independence.
 
 ## Running the suite
 

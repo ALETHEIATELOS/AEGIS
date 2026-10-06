@@ -6,13 +6,14 @@ Foundational principle: recommendation, authorization, and execution are
 distinct states. READY FOR HUMAN AUTHORITY ≠ AUTHORIZED ≠ EXECUTED.
 """
 
-from aegis import authority, conflict, domain, evidence, memory, outcomes, perspectives, readiness, records, runtime, synthesis
+from aegis import authority, conflict, domain, evidence, kaleidoscope, memory, outcomes, perspectives, readiness, records, runtime, synthesis
 
 __all__ = [
     "authority",
     "conflict",
     "domain",
     "evidence",
+    "kaleidoscope",
     "memory",
     "outcomes",
     "perspectives",
@@ -22,4 +23,4 @@ __all__ = [
     "synthesis",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

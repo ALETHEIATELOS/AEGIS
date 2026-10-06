@@ -30,6 +30,8 @@ Pass any pydantic-ai model name (e.g. "openai:gpt-4o") for live runs.
 
 from __future__ import annotations
 
+import os
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent
 
@@ -37,8 +39,23 @@ from aegis.authority import Actor, ActorKind
 from aegis.conflict import Contradiction
 from aegis.domain import Case
 from aegis.evidence import Evidence
+from aegis.kaleidoscope import (
+    Rebuttal,
+    Reframing,
+    build_minority_report,
+    contradiction_exposure,
+    second_generation,
+    sensitivity_analysis,
+)
 from aegis.perspectives import Perspective
 from aegis.synthesis import Synthesis, combine_confidence
+
+
+def default_model_name() -> str:
+    """Resolve the model: explicit argument wins, then AEGIS_MODEL, then the
+    offline test model. Live runs need a model string AND the provider's API
+    key in the environment (see docs/LIVE_RUNS.md)."""
+    return os.environ.get("AEGIS_MODEL", "test")
 
 
 # -- structured agent outputs ----------------------------------------------
@@ -78,6 +95,28 @@ class SynthesisDraft(BaseModel):
     agreements: list[str] = Field(description="What the perspectives genuinely agree on.")
     recommendation: str = Field(description="The recommendation. Analysis only — never an authorization.")
     rationale: str = Field(default="")
+
+
+class RebuttalDraft(BaseModel):
+    """What a rebutting perspective must return. Bounded by construction."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    response: str = Field(description="The response to the disagreement, on the topic only.")
+    conclusion_held: bool = Field(description="True if you hold your conclusion despite the disagreement.")
+    revised_conclusion: str = Field(
+        default="", description="If not held: your revised conclusion. Empty if held."
+    )
+    new_confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ReframingDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reframed_conclusion: str = Field(
+        description="The same conclusion, stress-tested against the foreign standpoint."
+    )
+    reasoning: str = Field(description="How the conclusion survives — or fails — the reframe.")
 
 
 # -- agent builders ----------------------------------------------------------
@@ -133,6 +172,41 @@ def build_synthesis_agent(model_name: str = "test") -> Agent[None, SynthesisDraf
     return Agent(model_name, output_type=SynthesisDraft, system_prompt=SYNTHESIS_SYSTEM)
 
 
+REBUTTAL_SYSTEM = """\
+You are a perspective in an institutional decision process, responding to a
+recorded disagreement.
+
+You are shown ONLY the disagreement's topic and the positions taken on that
+topic. You do NOT see the other perspectives' full reasoning — that boundary
+is structural, and this prompt is the entire extent of your exposure.
+
+Your job:
+- Respond to the disagreement on the topic, from your own standpoint.
+- You may hold your conclusion, revise it, or adjust your confidence.
+- Do NOT invent new evidence. If the disagreement reveals a gap, say so.
+- Your output is analysis. You do not authorize anything. You do not decide.
+"""
+
+REFRAMING_SYSTEM = """\
+You are testing a conclusion against a foreign standpoint.
+
+You receive one perspective's conclusion and a different standpoint's lens.
+Re-express the conclusion through that lens: does it survive? What would a
+holder of that standpoint object to, and does the objection land?
+
+You are not adopting the foreign standpoint as your own. You are
+stress-testing. Be honest about where the conclusion cracks.
+"""
+
+
+def build_rebuttal_agent(model_name: str = "test") -> Agent[None, RebuttalDraft]:
+    return Agent(model_name, output_type=RebuttalDraft, system_prompt=REBUTTAL_SYSTEM)
+
+
+def build_reframing_agent(model_name: str = "test") -> Agent[None, ReframingDraft]:
+    return Agent(model_name, output_type=ReframingDraft, system_prompt=REFRAMING_SYSTEM)
+
+
 def _format_evidence_pool(evidence: list[Evidence]) -> str:
     lines = []
     for e in evidence:
@@ -148,13 +222,15 @@ class AegisOrchestrator:
     """Runs the analytical pipeline: evidence -> perspectives -> conflict ->
     synthesis -> readiness. Stops at the gate. Never authorizes, never executes."""
 
-    def __init__(self, model_name: str = "test", agent_name: str = "aegis"):
-        self.model_name = model_name
+    def __init__(self, model_name: str | None = None, agent_name: str = "aegis"):
+        self.model_name = model_name or default_model_name()
         self.agent_name = agent_name
         self._actor = Actor(ActorKind.AGENT, agent_name)
-        self.perspective_agent = build_perspective_agent(model_name)
-        self.contrarian_agent = build_contrarian_agent(model_name)
-        self.synthesis_agent = build_synthesis_agent(model_name)
+        self.perspective_agent = build_perspective_agent(self.model_name)
+        self.contrarian_agent = build_contrarian_agent(self.model_name)
+        self.synthesis_agent = build_synthesis_agent(self.model_name)
+        self.rebuttal_agent = build_rebuttal_agent(self.model_name)
+        self.reframing_agent = build_reframing_agent(self.model_name)
 
     def run_perspectives(self, case: Case, standpoints: list[str]) -> list[Perspective]:
         """Run one independent perspective agent per standpoint.
@@ -271,3 +347,106 @@ class AegisOrchestrator:
             case.gate.advance(DecisionState.SYNTHESIZED, self._actor,
                               note=f"synthesis {synthesis.id} produced")
         return synthesis
+
+    def run_rebuttal_round(self, case: Case,
+                           contradiction_ids: list[str] | None = None) -> list[Perspective]:
+        """Run a structured rebuttal round over recorded contradictions.
+
+        For each contradiction, every involved perspective gets to respond —
+        seeing the topic and the positions on that topic ONLY (bounded
+        exposure). Responses produce second-generation perspectives; the
+        first generation is kept untouched.
+
+        This is the explicit, named mechanism for perspectives to engage
+        with disagreement. There is no other path by which a perspective
+        sees another's reasoning.
+        """
+        targets = [c for c in case.contradictions
+                   if contradiction_ids is None or c.id in contradiction_ids]
+        name_by_id = {p.id: p.name for p in case.perspectives}
+        perspective_by_id = {p.id: p for p in case.perspectives}
+        gen2: list[Perspective] = []
+        for contradiction in targets:
+            exposure = contradiction_exposure(contradiction, name_by_id)
+            for pid in contradiction.positions:
+                base = perspective_by_id.get(pid)
+                if base is None:
+                    continue
+                prompt = (
+                    f"Your standpoint: {base.standpoint}\n\n"
+                    f"Your current conclusion: {base.conclusion}\n"
+                    f"(confidence {base.confidence:.2f})\n\n"
+                    "The recorded disagreement you are responding to:\n"
+                    + "\n".join(exposure) + "\n\n"
+                    "Respond now."
+                )
+                result = self.rebuttal_agent.run_sync(prompt)
+                draft: RebuttalDraft = result.output
+                rebuttal = Rebuttal(
+                    contradiction_id=contradiction.id,
+                    perspective_id=base.id,
+                    exposed_to=exposure,
+                    response=draft.response,
+                    conclusion_held=draft.conclusion_held,
+                    revised_conclusion=draft.revised_conclusion,
+                    new_confidence=draft.new_confidence,
+                    created_by=self.agent_name,
+                )
+                gen2_perspective = second_generation(
+                    base,
+                    rebuttal=rebuttal,
+                    reasoning=(f"Rebuttal to contradiction {contradiction.id} "
+                               f"('{contradiction.topic}'): {draft.response}"),
+                    formed_by=self.agent_name,
+                )
+                case.add_perspective(gen2_perspective)
+                gen2.append(gen2_perspective)
+        return gen2
+
+    def run_reframing(self, case: Case,
+                      pairs: list[tuple[str, str]] | None = None) -> list[Reframing]:
+        """Stress-test conclusions through foreign standpoints.
+
+        pairs: list of (perspective_id, target_standpoint). Defaults to
+        reframing every perspective through every OTHER perspective's
+        standpoint — the full kaleidoscope turn.
+        """
+        perspective_by_id = {p.id: p for p in case.perspectives}
+        standpoints = {p.id: p.standpoint for p in case.perspectives}
+        if pairs is None:
+            # Default: the full kaleidoscope turn — every perspective reframed
+            # through every OTHER perspective's standpoint.
+            pairs = [(pid, osp) for pid in standpoints
+                     for oid, osp in standpoints.items() if oid != pid]
+        reframings: list[Reframing] = []
+        for pid, target_standpoint in pairs:
+            base = perspective_by_id.get(pid)
+            if base is None:
+                continue
+            prompt = (
+                f"Conclusion under test: {base.conclusion}\n\n"
+                f"Reasoning behind it: {base.reasoning}\n\n"
+                f"Foreign standpoint to apply: {target_standpoint}\n\n"
+                "Stress-test the conclusion through that lens."
+            )
+            result = self.reframing_agent.run_sync(prompt)
+            draft: ReframingDraft = result.output
+            reframings.append(Reframing(
+                perspective_id=base.id,
+                original_conclusion=base.conclusion,
+                target_standpoint=target_standpoint,
+                reframed_conclusion=draft.reframed_conclusion,
+                reasoning=draft.reasoning,
+                created_by=self.agent_name,
+            ))
+        return reframings
+
+    # -- deterministic kaleidoscope instruments (no model calls) ------------
+
+    def analyze_sensitivity(self, case: Case):
+        """Which evidence the synthesis hinges on. Deterministic."""
+        return sensitivity_analysis(case)
+
+    def minority_report(self, case: Case):
+        """The formal minority report for the human decider. Deterministic."""
+        return build_minority_report(case)
